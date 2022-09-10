@@ -41,10 +41,15 @@ private:
     uint8_t degree = INITIAL_SIZE_DEGREE;
 };
 
+struct None
+{
+};
+
 template <typename Key>
 struct HashTableCell
 {
     using key_type = Key;
+    using mapped_type = None;
 
     Key key;
 
@@ -53,6 +58,7 @@ struct HashTableCell
     HashTableCell(Key && key) : key(std::move(key)) { }
 
     const Key & GetKey() const { return key; }
+    None GetValue() const { return {}; }
 
     bool IsOccupied() { return key != Key{}; }
     void SetUnoccupied() { key = Key{}; }
@@ -78,7 +84,10 @@ public:
 
 public:
     using Key = typename Cell::key_type;
+    using key_type = Key;
+    using mapped_type = Cell::mapped_type;
     using cell_type = Cell;
+    using result_type = Cell *;
 
     Cell * Lookup(const Key & key)
     {
@@ -90,7 +99,7 @@ public:
         return &buf[index];
     }
 
-    bool Emplace(Key key, Cell *& cell)
+    bool Emplace(Key key, result_type & cell)
     {
         size_t index = FindSlot(key);
         // already exist

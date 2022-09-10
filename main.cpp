@@ -10,7 +10,7 @@ int main()
     // std::unordered_map<int, int>::key_type;
     using HashSet = HashTable<HashTableCell<int>, DefaultAllocator, HashTableGrower<>>;
     HashSet my_hash_table;
-    HashSet::cell_type * cell = nullptr;
+    HashSet::result_type cell = {};
     bool inserted = my_hash_table.Emplace(1, cell);
     if (inserted)
     {
