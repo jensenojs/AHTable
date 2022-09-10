@@ -43,8 +43,8 @@ public:
         else
         {
             // large string: store pointer
-            memcpy(value.pointer.prefix, data, PREFIX_LENGTH); // 只有前缀字符串自己管理生命周期
-            value.pointer.ptr = (char *)data; // 只保管了指针,没有拥有所有权
+            memcpy(value.pointer.prefix, data, PREFIX_LENGTH);
+            value.pointer.ptr = (char *)data;
         }
     }
     string_t(const char * data) : string_t(data, strlen(data))
