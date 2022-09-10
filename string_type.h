@@ -38,12 +38,12 @@ public:
                 return;
             }
             // small string: inlined
-            memcpy(value.inlined.inlined, data, GetSize());
+            FastMemcpy(value.inlined.inlined, data, GetSize());
         }
         else
         {
             // large string: store pointer
-            memcpy(value.pointer.prefix, data, PREFIX_LENGTH);
+            FastMemcpy(value.pointer.prefix, data, PREFIX_LENGTH);
             value.pointer.ptr = (char *)data;
         }
     }
@@ -84,7 +84,7 @@ public:
         else
         {
             // copy the data into the prefix
-            memcpy(value.pointer.prefix, dataptr, PREFIX_LENGTH);
+            FastMemcpy(value.pointer.prefix, dataptr, PREFIX_LENGTH);
         }
     }
     

@@ -5,12 +5,13 @@
 #include <exception>
 #include "allocator.h"
 #include "common.h"
+#include "fast_memcpy.h"
 #include "hash.h"
 
 #include <iostream>
 
 template <uint8_t size_degree = 8>
-struct HashTableGrower
+struct HTAssistant
 {
 public:
     static constexpr uint8_t INITIAL_SIZE_DEGREE = size_degree;
@@ -24,9 +25,9 @@ public:
 
     inline size_t Mask() const { return BufSize() - 1; }
 
-    bool NeedGrow(size_t x) const { return x > MaxCount(); }
+    inline bool NeedGrow(size_t x) const { return x > MaxCount(); }
 
-    void Grow()
+    inline void Grow()
     {
         if (degree >= 48)
         {
@@ -35,15 +36,19 @@ public:
         degree += 1;
     }
 
-    size_t Next(size_t x) const { return ((++x) & Mask()); }
+    inline size_t Next(size_t x) const { return ((++x) & Mask()); }
 
 private:
     uint8_t degree = INITIAL_SIZE_DEGREE;
 };
 
+/*
 struct None
 {
+    None & operator()() { return *this; }
 };
+*/
+
 
 template <typename Key>
 struct HashTableCell
@@ -58,9 +63,9 @@ struct HashTableCell
     HashTableCell(Key && key) : key(std::move(key)) { }
 
     const Key & GetKey() const { return key; }
-    None GetValue() const { return {}; }
+    void GetValue() const { return; }
 
-    bool IsOccupied() { return key != Key{}; }
+    bool IsOccupied() const { return key != Key{}; }
     void SetUnoccupied() { key = Key{}; }
 };
 
@@ -85,11 +90,11 @@ public:
 public:
     using Key = typename Cell::key_type;
     using key_type = Key;
-    using mapped_type = Cell::mapped_type;
+    using mapped_type = typename Cell::mapped_type;
     using cell_type = Cell;
     using result_type = Cell *;
 
-    Cell * Lookup(const Key & key)
+    result_type Lookup(const Key & key)
     {
         size_t index = FindSlot(key);
         if (!buf[index].IsOccupied())
@@ -120,7 +125,7 @@ public:
                 {
                     hash_t hash = Hash(buf[i].GetKey());
                     size_t new_index = grower.Slot(hash);
-                    memcpy(static_cast<void *>(&new_buf[new_index]), static_cast<const void *>(&buf[i]), sizeof(Cell));
+                    FastMemcpy(static_cast<void *>(&new_buf[new_index]), static_cast<const void *>(&buf[i]), sizeof(Cell));
                 }
             }
             Allocator::Free(buf);
@@ -162,7 +167,7 @@ public:
                 continue;
             }
 
-            memcpy(static_cast<void *>(&buf[index]), static_cast<const void *>(&buf[next_index]), sizeof(Cell));
+            FastMemcpy(static_cast<void *>(&buf[index]), static_cast<const void *>(&buf[next_index]), sizeof(Cell));
             index = next_index;
         }
         buf[index].SetUnoccupied();
