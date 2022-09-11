@@ -97,9 +97,11 @@ public:
 
     bool operator==(const string_t & r) const
     {
-        auto this_str = this->GetString();
-        auto r_str = r.GetString();
-        return this_str == r_str;
+        if (GetSize() != r.GetSize())
+        {
+            return false;
+        }
+        return memcmp(GetDataUnsafe(), r.GetDataUnsafe(), GetSize()) == 0;
     }
 
     bool operator!=(const string_t & r) const { return !(*this == r); }

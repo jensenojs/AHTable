@@ -20,6 +20,7 @@ struct StringHeap
         memcpy(chunk, s.GetDataUnsafe(), s.GetSize());
         auto res = chunk;
         chunk += s.GetSize();
+        remaining_size -= s.GetSize();
         return duckdb::string_t(res, s.GetSize());
     }
 

@@ -112,11 +112,16 @@ struct StringHashTableCell : public HashTableCell<T>
     using Base = HashTableCell<T>;
     using Base::Base;
 
+    hash_t hash;
+
     duckdb::string_t GetKey() const
     {
         const auto & key = Base::GetKey();
         return duckdb::string_t(key.data(), key.size());
     }
+
+    hash_t GetHash() const { return hash; }
+    void SetHash(hash_t hash) { this->hash = hash; }
 
     const T & GetRawKey() const { return Base::GetRawKey(); }
     bool IsOccupied() const { return Base::key.size() != 0; }
@@ -129,8 +134,11 @@ struct StringHashTableCell<StringKey8> : public HashTableCell<StringKey8>
     using Base = HashTableCell<StringKey8>;
     using Base::Base;
 
+    hash_t hash;
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
+    hash_t GetHash() const { return hash; }
+    void SetHash(hash_t hash) { this->hash = hash; }
 
     duckdb::string_t GetKey() const { return ToDuckDBString(GetRawKey()); }
     const StringKey8 & GetRawKey() const { return Base::GetRawKey(); }
@@ -141,6 +149,10 @@ struct StringHashTableCell<StringKey16> : public HashTableCell<StringKey16>
 {
     using Base = HashTableCell<StringKey16>;
     using Base::Base;
+
+    hash_t hash;
+    hash_t GetHash() const { return hash; }
+    void SetHash(hash_t hash) { this->hash = hash; }
 
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
@@ -157,6 +169,10 @@ struct StringHashTableCell<StringKey24> : public HashTableCell<StringKey24>
     using Base = HashTableCell<StringKey24>;
     using Base::Base;
 
+    hash_t hash;
+    hash_t GetHash() const { return hash; }
+    void SetHash(hash_t hash) { this->hash = hash; }
+
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
@@ -172,10 +188,10 @@ struct StringHashTableCell<duckdb::string_t> : public HashTableCell<duckdb::stri
     using Base = HashTableCell<duckdb::string_t>;
     using Base::Base;
 
-    using Base::GetRawKey;
+    hash_t hash;
+    hash_t GetHash() const { return hash; }
+    void SetHash(hash_t hash) { this->hash = hash; }
 
-    // TODO:
-    // hash_t hash;
 
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
@@ -183,8 +199,6 @@ struct StringHashTableCell<duckdb::string_t> : public HashTableCell<duckdb::stri
     const duckdb::string_t & GetKey() const { return Base::GetKey(); }
     bool IsOccupied() const { return key.GetSize() != 0; }
     void SetUnoccupied() { key = duckdb::string_t(); }
-    // TODO:
-    // hash_t GetHash() const { return hash; }
 };
 
 using StringKey8HashTable = HashTable<StringHashTableCell<StringKey8>, DefaultAllocator, HTAssistant<>>;
@@ -285,12 +299,12 @@ public:
             case 0: {
                 if (((uintptr_t)key_ptr & 0x800) == 0)
                 {
-                    memcpy(&sum_type_key.n3[0], key_ptr, 8);
+                    __builtin_memcpy(&sum_type_key.n3[0], key_ptr, 8);
                     sum_type_key.n3[0] &= (size_t)0xFFFFFFFFFFFFFFFF >> tail;
                 }
                 else
                 {
-                    memcpy(&sum_type_key.n3[0], key_ptr + key_size - 8, 8);
+                    __builtin_memcpy(&sum_type_key.n3[0], key_ptr + key_size - 8, 8);
                     sum_type_key.n3[0] >>= tail;
                 }
                 StringKey8HashTable::result_type res;
@@ -303,8 +317,8 @@ public:
                 break;
             }
             case 1: {
-                memcpy(&sum_type_key.n3[0], key_ptr, 8);
-                memcpy(&sum_type_key.n3[1], key_ptr + key_size - 8, 8);
+                __builtin_memcpy(&sum_type_key.n3[0], key_ptr, 8);
+                __builtin_memcpy(&sum_type_key.n3[1], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[1] >>= tail;
                 StringKey16HashTable::result_type res;
                 t2.Emplace(sum_type_key.k16, res);
@@ -315,8 +329,8 @@ public:
                 break;
             }
             case 2: {
-                memcpy(&sum_type_key.n3[0], key_ptr, 16);
-                memcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
+                __builtin_memcpy(&sum_type_key.n3[0], key_ptr, 16);
+                __builtin_memcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[2] >>= tail;
                 StringKey24HashTable::result_type res;
                 t3.Emplace(sum_type_key.k24, res);
@@ -327,8 +341,8 @@ public:
                 break;
             }
             default:
-                // TODO(lokax): Need to copy data
                 duckdb::string_t new_key = heap.AddString(key);
+                // duckdb::string_t new_key = key;
                 StringRefHashTable::result_type res;
                 st.Emplace(new_key, res);
                 result.key = res->GetKey();
@@ -352,12 +366,12 @@ public:
             case 0: {
                 if (((uintptr_t)key_ptr & 0x800) == 0)
                 {
-                    memcpy(&sum_type_key.n3[0], key_ptr, 8);
+                    __builtin_memcpy(&sum_type_key.n3[0], key_ptr, 8);
                     sum_type_key.n3[0] &= (size_t)0xFFFFFFFFFFFFFFFF >> tail;
                 }
                 else
                 {
-                    memcpy(&sum_type_key.n3[0], key_ptr + key_size - 8, 8);
+                    __builtin_memcpy(&sum_type_key.n3[0], key_ptr + key_size - 8, 8);
                     sum_type_key.n3[0] >>= tail;
                 }
                 auto res = t1.Lookup(sum_type_key.k8);
@@ -375,8 +389,8 @@ public:
                 }
             }
             case 1: {
-                memcpy(&sum_type_key.n3[0], key_ptr, 8);
-                memcpy(&sum_type_key.n3[1], key_ptr + key_size - 8, 8);
+                __builtin_memcpy(&sum_type_key.n3[0], key_ptr, 8);
+                __builtin_memcpy(&sum_type_key.n3[1], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[1] >>= tail;
                 auto res = t2.Lookup(sum_type_key.k16);
                 if (!res)
@@ -393,8 +407,8 @@ public:
                 }
             }
             case 2: {
-                memcpy(&sum_type_key.n3[0], key_ptr, 16);
-                memcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
+                __builtin_memcpy(&sum_type_key.n3[0], key_ptr, 16);
+                __builtin_memcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[2] >>= tail;
                 auto res = t3.Lookup(sum_type_key.k24);
                 if (!res)
@@ -437,6 +451,8 @@ public:
             + ", <st> " + std::to_string(st.Size());
         return res;
     }
+
+    size_t GetC() const { return st.GetC(); }
 
 private:
     StringKey8HashTable t1;

@@ -17,7 +17,7 @@ public:
     static_assert(INITIAL_SIZE_DEGREE >= 1, "size_degree < 1");
 
     inline size_t BufSize() const { return 1 << degree; }
-    //! half free space
+    //! 0.5
     inline size_t MaxCount() const { return 1 << (degree - 1); }
 
     inline size_t Slot(size_t hash) const { return hash & Mask(); }
@@ -32,7 +32,7 @@ public:
         {
             throw std::logic_error("Out of memory In HashTableGrower::Grow(...)");
         }
-        degree += 1;
+        degree += 2;
     }
 
     inline size_t Next(size_t x) const { return ((++x) & Mask()); }
@@ -57,6 +57,9 @@ struct HashTableCell
     // mapped_type GetValue() const { return; }
 
     const Key & GetRawKey() const { return key; }
+
+    hash_t GetHash() const { return Hash(key); }
+    void SetHash(hash_t) { }
 
     bool IsOccupied() const { return key != Key{}; }
     void SetUnoccupied() { key = Key{}; }
@@ -89,7 +92,8 @@ public:
 
     result_type __attribute__((__always_inline__)) Lookup(const Key & key)
     {
-        size_t index = FindSlot(key);
+        hash_t hash;
+        size_t index = FindSlot(key, hash);
         if (!buf[index].IsOccupied())
         {
             return nullptr;
@@ -99,7 +103,8 @@ public:
 
     bool __attribute__((__always_inline__)) Emplace(Key key, result_type & cell)
     {
-        size_t index = FindSlot(key);
+        hash_t hash;
+        size_t index = FindSlot(key, hash);
         // already exist
         if (buf[index].IsOccupied())
         {
@@ -109,6 +114,9 @@ public:
 
         if (unlikely(assisitant.NeedGrow(tsize + 1)))
         {
+            // std::cout << "key count : " << Size() << "\n";
+            // std::cout << "resize : " << assisitant.BufSize() << "\n";
+            // std::cout << "c : " << c << "\n";
             size_t old_buf_size = assisitant.BufSize();
             assisitant.Grow();
             Cell * new_buf = reinterpret_cast<Cell *>(Allocator::Alloc(assisitant.BufSize() * sizeof(Cell)));
@@ -116,16 +124,18 @@ public:
             {
                 if (buf[i].IsOccupied())
                 {
-                    hash_t hash = Hash(buf[i].GetRawKey());
+                    hash_t hash = buf[i].GetHash();
+                    // hash_t hash = Hash(buf[i].GetRawKey());
                     size_t new_index = assisitant.Slot(hash);
-                    memcpy(static_cast<void *>(&new_buf[new_index]), static_cast<const void *>(&buf[i]), sizeof(Cell));
+                    __builtin_memcpy(static_cast<void *>(&new_buf[new_index]), static_cast<const void *>(&buf[i]), sizeof(Cell));
                 }
             }
             Allocator::Free(buf);
             buf = new_buf;
-            index = FindSlot(key);
+            index = FindSlot(key, hash);
         }
         new (&buf[index]) Cell(std::move(key));
+        buf[index].SetHash(hash);
         cell = &buf[index];
         tsize++;
         return true;
@@ -133,7 +143,8 @@ public:
 
     bool __attribute__((__always_inline__)) Erase(const Key & key)
     {
-        size_t index = FindSlot(key);
+        hash_t hash;
+        size_t index = FindSlot(key, hash);
         if (!buf[index].IsOccupied())
         {
             return false;
@@ -146,7 +157,7 @@ public:
             {
                 break;
             }
-            size_t optimal_index = assisitant.Slot(Hash(buf[next_index].GetRawKey()));
+            size_t optimal_index = assisitant.Slot(buf[next_index].GetHash());
             // determine if k lies cyclically in (i,j]
             // |    i.k.j |
             // |....j i.k.| or  |.k..j i...|
@@ -160,7 +171,7 @@ public:
                 continue;
             }
 
-            memcpy(static_cast<void *>(&buf[index]), static_cast<const void *>(&buf[next_index]), sizeof(Cell));
+            __builtin_memcpy(static_cast<void *>(&buf[index]), static_cast<const void *>(&buf[next_index]), sizeof(Cell));
             index = next_index;
         }
         buf[index].SetUnoccupied();
@@ -169,14 +180,19 @@ public:
         return true;
     }
 
+    size_t GetC() const { return c; }
+
 private:
-    size_t __attribute__((__always_inline__)) FindSlot(const Key & key) const
+    // TODO: Split this function
+    size_t __attribute__((__always_inline__)) FindSlot(const Key & key, hash_t & hash) const
     {
-        hash_t hash = Hash(key);
+        hash = Hash(key);
         size_t index = assisitant.Slot(hash);
         // TODO(lokax): Need to process float/double
-        while (buf[index].IsOccupied() && buf[index].GetRawKey() != key)
+        // TODO: We can fast checkout hash value for string key.
+        while (buf[index].IsOccupied() && (buf[index].GetHash() != hash || buf[index].GetRawKey() != key))
         {
+            c++;
             // not found, move to next index
             index = assisitant.Next(index);
         }
@@ -188,4 +204,5 @@ protected:
     Assisitant assisitant;
     Cell * buf;
     size_t tsize;
+    mutable size_t c = 0;
 };
