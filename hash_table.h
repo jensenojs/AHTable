@@ -96,7 +96,7 @@ public:
     using cell_type = Cell;
     using result_type = Cell *;
 
-    result_type Lookup(const Key & key)
+    result_type __attribute__((__always_inline__)) Lookup(const Key & key)
     {
         size_t index = FindSlot(key);
         if (!buf[index].IsOccupied())
@@ -106,7 +106,7 @@ public:
         return &buf[index];
     }
 
-    bool Emplace(Key key, result_type & cell)
+    bool __attribute__((__always_inline__)) Emplace(Key key, result_type & cell)
     {
         size_t index = FindSlot(key);
         // already exist
@@ -140,7 +140,7 @@ public:
         return true;
     }
 
-    bool Erase(const Key & key)
+    bool __attribute__((__always_inline__)) Erase(const Key & key)
     {
         size_t index = FindSlot(key);
         if (!buf[index].IsOccupied())
@@ -179,7 +179,7 @@ public:
     }
 
 private:
-    size_t FindSlot(const Key & key) const
+    size_t __attribute__((__always_inline__)) FindSlot(const Key & key) const
     {
         hash_t hash = Hash(key);
         size_t index = assisitant.Slot(hash);
