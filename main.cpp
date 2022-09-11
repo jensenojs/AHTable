@@ -50,5 +50,10 @@ int main()
     std::cout << "size = 2 ? : " << (my_hash_set.Size() == 2) << "\n";
     std::cout << "print size : " << my_hash_set.PrintSize() << "\n";
 
+    result = my_hash_set.Lookup(duckdb::string_t(name.c_str(), name.size()));
+    if (result)
+    {
+        std::cout << "result key = " << result->GetKey().GetString() << "\n";
+    }
     return 0;
 }
