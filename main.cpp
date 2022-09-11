@@ -40,5 +40,15 @@ int main()
     {
         std::cout << "inserted ? : " << inserted << "\n";
     }
+    std::string apple = "Apple";
+    inserted = my_hash_set.Emplace(duckdb::string_t(apple.c_str(), apple.size()), result);
+    if (inserted)
+    {
+        std::cout << "inserted ? : " << inserted << "\n";
+    }
+
+    std::cout << "size = 2 ? : " << (my_hash_set.Size() == 2) << "\n";
+    std::cout << "print size : " << my_hash_set.PrintSize() << "\n";
+
     return 0;
 }

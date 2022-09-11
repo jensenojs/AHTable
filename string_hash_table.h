@@ -378,6 +378,14 @@ public:
 
     size_t Size() const { return t1.Size() + t2.Size() + t3.Size() + st.Size(); }
 
+    std::string PrintSize()
+    {
+        std::string res;
+        res += "size: <t1> " + std::to_string(t1.Size()) + ", <t2> " + std::to_string(t2.Size()) + ", <t3> " + std::to_string(t3.Size())
+            + ", <st> " + std::to_string(st.Size());
+        return res;
+    }
+
 private:
     StringKey8HashTable t1;
     StringKey16HashTable t2;
