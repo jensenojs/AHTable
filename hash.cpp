@@ -26,6 +26,12 @@ hash_t Hash(duckdb::string_t x)
     return HashBytes((void *)x.GetDataUnsafe(), x.GetSize());
 }
 
+template <>
+hash_t Hash(std::string & x)
+{
+    return HashBytes((void *)x.data(), x.size());
+}
+
 
 template <typename T>
 const T Load(const char * ptr)

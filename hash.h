@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include "string_type.h"
 
 using hash_t = uint64_t;
@@ -40,6 +41,9 @@ hash_t Hash(StringKey24 x);
 
 template <>
 hash_t Hash(duckdb::string_t x);
+
+template <>
+hash_t Hash(std::string & x);
 
 template <typename T>
 struct DefaultHash

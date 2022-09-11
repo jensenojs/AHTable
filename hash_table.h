@@ -42,14 +42,6 @@ private:
     uint8_t degree = INITIAL_SIZE_DEGREE;
 };
 
-/*
-struct None
-{
-    None & operator()() { return *this; }
-};
-*/
-
-
 template <typename Key>
 struct HashTableCell
 {
@@ -63,7 +55,7 @@ struct HashTableCell
     HashTableCell(Key && key) : key(std::move(key)) { }
 
     const Key & GetKey() const { return key; }
-    mapped_type GetValue() const { return; }
+    // mapped_type GetValue() const { return; }
 
     const Key & GetRawKey() const { return key; }
 

@@ -2,6 +2,7 @@
 #include <type_traits>
 #include "fast_memcpy.h"
 #include "hash_table.h"
+#include "string_heap.h"
 #include "string_type.h"
 
 using StringKey8 = uint64_t;
@@ -26,7 +27,7 @@ struct StringKey24
 };
 
 
-inline duckdb::string_t ToString(const StringKey8 & x)
+inline duckdb::string_t ToDuckDBString(const StringKey8 & x)
 {
     for (size_t i = 8; i > 0; i--)
     {
@@ -38,7 +39,7 @@ inline duckdb::string_t ToString(const StringKey8 & x)
     return duckdb::string_t();
 }
 
-inline duckdb::string_t ToString(const StringKey16 & x)
+inline duckdb::string_t ToDuckDBString(const StringKey16 & x)
 {
     for (size_t i = 8; i > 0; i--)
     {
@@ -50,7 +51,7 @@ inline duckdb::string_t ToString(const StringKey16 & x)
     return duckdb::string_t();
 }
 
-inline duckdb::string_t ToString(const StringKey24 & x)
+inline duckdb::string_t ToDuckDBString(const StringKey24 & x)
 {
     for (size_t i = 8; i > 0; i--)
     {
@@ -112,8 +113,15 @@ struct StringHashTableCell : public HashTableCell<T>
     using Base = HashTableCell<T>;
     using Base::Base;
 
-    duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    duckdb::string_t GetKey() const
+    {
+        const auto & key = Base::GetKey();
+        return duckdb::string_t(key.data(), key.size());
+    }
+
     const T & GetRawKey() const { return Base::GetRawKey(); }
+    bool IsOccupied() const { return key.size() != 0; }
+    void SetUnoccupied() { key.size() = 0; }
 };
 
 template <>
@@ -125,10 +133,8 @@ struct StringHashTableCell<StringKey8> : public HashTableCell<StringKey8>
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
-    duckdb::string_t GetKey() const { return ToString(GetRawKey()); }
+    duckdb::string_t GetKey() const { return ToDuckDBString(GetRawKey()); }
     const StringKey8 & GetRawKey() const { return Base::GetRawKey(); }
-    bool IsOccupied() const { return key != 0; }
-    void SetUnoccupied() { key == 0; }
 };
 
 template <>
@@ -140,10 +146,10 @@ struct StringHashTableCell<StringKey16> : public HashTableCell<StringKey16>
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
-    duckdb::string_t GetKey() const { return ToString(GetRawKey()); }
+    duckdb::string_t GetKey() const { return ToDuckDBString(GetRawKey()); }
     const StringKey16 & GetRawKey() const { return Base::GetRawKey(); }
-    bool IsOccupied() const { return key.b != 0; }
-    void SetUnoccupied() { key.b == 0; }
+    bool IsOccupied() const { return key.a != 0; }
+    void SetUnoccupied() { key.a = 0; }
 };
 
 template <>
@@ -155,10 +161,10 @@ struct StringHashTableCell<StringKey24> : public HashTableCell<StringKey24>
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
-    duckdb::string_t GetKey() const { return ToString(GetRawKey()); }
+    duckdb::string_t GetKey() const { return ToDuckDBString(GetRawKey()); }
     const StringKey24 GetRawKey() const { return Base::GetRawKey(); }
-    bool IsOccupied() const { return key.c != 0; }
-    void SetUnoccupied() { key.c == 0; }
+    bool IsOccupied() const { return key.a != 0; }
+    void SetUnoccupied() { key.a = 0; }
 };
 
 template <>
@@ -182,6 +188,8 @@ using StringKey16HashTable = HashTable<StringHashTableCell<StringKey16>, Default
 using StringKey24HashTable = HashTable<StringHashTableCell<StringKey24>, DefaultAllocator, HTAssistant<>>;
 using StringRefHashTable = HashTable<StringHashTableCell<duckdb::string_t>, DefaultAllocator, HTAssistant<>>;
 
+using StdStringHashTable = HashTable<StringHashTableCell<std::string>, DefaultAllocator, HTAssistant<>>;
+
 template <typename MappedType>
 struct StringHashTableResult
 {
@@ -200,7 +208,7 @@ struct StringHashTableResult
 
     StringHashTableResult & operator*() const { return *this; }
 
-    StringHashTableResult * operator->() const { return *this; }
+    StringHashTableResult * operator->() const { return this; }
 
     // Cell & operator*() const { return *this; }
 
@@ -223,7 +231,7 @@ struct StringHashTableResult<void>
     explicit StringHashTableResult(duckdb::string_t key) : key(key), has_key(true) { }
 
     const duckdb::string_t & GetKey() const { return key; }
-    void GetValue() const { return; }
+    // void GetValue() const { return; }
 
     explicit operator bool() const { return has_key; }
 
@@ -314,7 +322,14 @@ public:
                 break;
             }
             default:
-
+                // TODO(lokax): Need to copy data
+                duckdb::string_t new_key = heap.AddString(key);
+                StringRefHashTable::result_type res;
+                st.Emplace(new_key, res);
+                result.key = res->GetKey();
+                if constexpr (!std::is_same<mapped_type, void>::value)
+                {
+                }
                 break;
         }
         return true;
@@ -391,7 +406,6 @@ public:
                 }
             }
             default: {
-                // TODO(lokax): Need to copy data
                 auto res = st.Lookup(key);
                 if (!res)
                 {
@@ -424,4 +438,5 @@ private:
     StringKey16HashTable t2;
     StringKey24HashTable t3;
     StringRefHashTable st;
+    StringHeap heap;
 };
