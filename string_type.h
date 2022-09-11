@@ -38,12 +38,12 @@ public:
                 return;
             }
             // small string: inlined
-            FastMemcpy(value.inlined.inlined, data, GetSize());
+            memcpy(value.inlined.inlined, data, GetSize());
         }
         else
         {
             // large string: store pointer
-            FastMemcpy(value.pointer.prefix, data, PREFIX_LENGTH);
+            memcpy(value.pointer.prefix, data, PREFIX_LENGTH);
             value.pointer.ptr = (char *)data;
         }
     }
@@ -84,16 +84,25 @@ public:
         else
         {
             // copy the data into the prefix
-            FastMemcpy(value.pointer.prefix, dataptr, PREFIX_LENGTH);
+            memcpy(value.pointer.prefix, dataptr, PREFIX_LENGTH);
         }
     }
-    
+
     bool operator<(const string_t & r) const
     {
         auto this_str = this->GetString();
         auto r_str = r.GetString();
         return this_str < r_str;
     }
+
+    bool operator==(const string_t & r) const
+    {
+        auto this_str = this->GetString();
+        auto r_str = r.GetString();
+        return this_str == r_str;
+    }
+
+    bool operator!=(const string_t & r) const { return !(*this == r); }
 
 private:
     union

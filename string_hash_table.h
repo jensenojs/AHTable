@@ -26,7 +26,7 @@ struct StringKey24
 };
 
 template <>
-hash_t Hash(const StringKey16 & x)
+hash_t Hash(StringKey16 x)
 {
     hash_t a = Hash(x.a);
     hash_t b = Hash(x.b);
@@ -34,7 +34,7 @@ hash_t Hash(const StringKey16 & x)
 }
 
 template <>
-hash_t Hash(const StringKey24 & x)
+hash_t Hash(StringKey24 x)
 {
     hash_t res = Hash(x.a);
     res = CombineHash(res, Hash(x.b));
