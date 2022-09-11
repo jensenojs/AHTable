@@ -5,6 +5,9 @@
 
 using hash_t = uint64_t;
 
+struct StringKey16;
+struct StringKey24;
+
 inline hash_t murmurhash64(uint64_t x)
 {
     x ^= x >> 32;
@@ -28,8 +31,16 @@ hash_t Hash(float x);
 template <>
 hash_t Hash(double x);
 
+template <>
+hash_t Hash(const StringKey16 & x);
+
+template <>
+hash_t Hash(const StringKey24 & x);
+
 template <typename T>
 struct DefaultHash
 {
     size_t operator()(T x) { return Hash(x); }
 };
+
+hash_t CombineHash(hash_t a, hash_t b);

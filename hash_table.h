@@ -65,16 +65,18 @@ struct HashTableCell
     const Key & GetKey() const { return key; }
     mapped_type GetValue() const { return; }
 
+    const Key & GetRawKey() const { return key; }
+
     bool IsOccupied() const { return key != Key{}; }
     void SetUnoccupied() { key = Key{}; }
 };
 
 //! https://en.wikipedia.org/wiki/Open_addressing
-template <typename Cell, typename Allocator, typename Grower>
+template <typename Cell, typename Allocator, typename Assisitant>
 struct HashTable : private Allocator
 {
 public:
-    HashTable() : tsize(0) { buf = reinterpret_cast<Cell *>(Allocator::Alloc(grower.BufSize() * sizeof(Cell))); }
+    HashTable() : tsize(0) { buf = reinterpret_cast<Cell *>(Allocator::Alloc(assisitant.BufSize() * sizeof(Cell))); }
 
     ~HashTable()
     {
@@ -114,17 +116,17 @@ public:
             return false;
         }
 
-        if (unlikely(grower.NeedGrow(tsize + 1)))
+        if (unlikely(assisitant.NeedGrow(tsize + 1)))
         {
-            size_t old_buf_size = grower.BufSize();
-            grower.Grow();
-            Cell * new_buf = reinterpret_cast<Cell *>(Allocator::Alloc(grower.BufSize() * sizeof(Cell)));
+            size_t old_buf_size = assisitant.BufSize();
+            assisitant.Grow();
+            Cell * new_buf = reinterpret_cast<Cell *>(Allocator::Alloc(assisitant.BufSize() * sizeof(Cell)));
             for (size_t i = 0; i < old_buf_size; ++i)
             {
                 if (buf[i].IsOccupied())
                 {
-                    hash_t hash = Hash(buf[i].GetKey());
-                    size_t new_index = grower.Slot(hash);
+                    hash_t hash = Hash(buf[i].GetRawKey());
+                    size_t new_index = assisitant.Slot(hash);
                     FastMemcpy(static_cast<void *>(&new_buf[new_index]), static_cast<const void *>(&buf[i]), sizeof(Cell));
                 }
             }
@@ -148,12 +150,12 @@ public:
         size_t next_index = index;
         while (true)
         {
-            next_index = grower.Next(next_index);
+            next_index = assisitant.Next(next_index);
             if (!buf[next_index].IsOccupied())
             {
                 break;
             }
-            size_t optimal_index = grower.Slot(Hash(buf[next_index].GetKey()));
+            size_t optimal_index = assisitant.Slot(Hash(buf[next_index].GetRawKey()));
             // determine if k lies cyclically in (i,j]
             // |    i.k.j |
             // |....j i.k.| or  |.k..j i...|
@@ -180,19 +182,19 @@ private:
     size_t FindSlot(const Key & key) const
     {
         hash_t hash = Hash(key);
-        size_t index = grower.Slot(hash);
+        size_t index = assisitant.Slot(hash);
         // TODO(lokax): Need to process float/double
-        while (buf[index].IsOccupied() && !buf[index].GetKey() == key)
+        while (buf[index].IsOccupied() && buf[index].GetRawKey() != key)
         {
             // not found, move to next index
-            index = grower.Next(index);
+            index = assisitant.Next(index);
         }
         return index;
     }
 
 
 protected:
-    Grower grower;
+    Assisitant assisitant;
     Cell * buf;
     size_t tsize;
 };

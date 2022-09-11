@@ -10,6 +10,9 @@ struct StringKey16
 {
     uint64_t a;
     uint64_t b;
+
+    bool operator==(const StringKey16 & rhs) const { return a == rhs.a && b == rhs.b; }
+    bool operator!=(const StringKey16 & rhs) const { return !this->operator==(rhs); }
 };
 
 struct StringKey24
@@ -17,7 +20,28 @@ struct StringKey24
     uint64_t a;
     uint64_t b;
     uint64_t c;
+
+    bool operator==(const StringKey24 & rhs) const { return a == rhs.a && b == rhs.b && c == rhs.c; }
+    bool operator!=(const StringKey24 & rhs) const { return !this->operator==(rhs); }
 };
+
+template <>
+hash_t Hash(const StringKey16 & x)
+{
+    hash_t a = Hash(x.a);
+    hash_t b = Hash(x.b);
+    return CombineHash(a, b);
+}
+
+template <>
+hash_t Hash(const StringKey24 & x)
+{
+    hash_t res = Hash(x.a);
+    res = CombineHash(res, Hash(x.b));
+    res = CombineHash(res, Hash(x.c));
+    return res;
+}
+
 
 /*
 template <typename Cell>
@@ -56,6 +80,7 @@ struct StringHashTableCell : public HashTableCell<T>
 
     // TODO:
     duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    const T & GetRawKey() const { return Base::GetRawKey(); }
 };
 
 template <>
@@ -69,6 +94,7 @@ struct StringHashTableCell<StringKey16> : public HashTableCell<StringKey16>
 
     // TODO:
     duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    const StringKey16 & GetRawKey() const { return Base::GetRawKey(); }
     bool IsOccupied() const { return key.b != 0; }
     void SetUnoccupied() { key.b == 0; }
 };
@@ -84,6 +110,7 @@ struct StringHashTableCell<StringKey24> : public HashTableCell<StringKey24>
 
     // TODO:
     duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    const StringKey24 GetRawKey() const { return Base::GetRawKey(); }
     bool IsOccupied() const { return key.c != 0; }
     void SetUnoccupied() { key.c == 0; }
 };
@@ -94,11 +121,13 @@ struct StringHashTableCell<duckdb::string_t> : public HashTableCell<duckdb::stri
     using Base = HashTableCell<duckdb::string_t>;
     using Base::Base;
 
+    using Base::GetRawKey;
+
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
     // TODO:
-    duckdb::string_t & GetKey() const { return key; }
+    const duckdb::string_t & GetKey() const { return Base::GetKey(); }
     bool IsOccupied() const { return key.GetSize() != 0; }
     void SetUnoccupied() { key = duckdb::string_t(); }
 };
@@ -314,7 +343,6 @@ public:
                 FastMemcpy(&sum_type_key.n3[0], key_ptr, 16);
                 FastMemcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[2] >>= tail;
-                StringKey24HashTable::result_type res;
                 auto res = t3.Lookup(sum_type_key.k24);
                 if (!res)
                 {

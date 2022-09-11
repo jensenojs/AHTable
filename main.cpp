@@ -35,7 +35,7 @@ int main()
     StringHashSet my_hash_set;
     std::string name = "hello world";
     StringHashSet::result_type result;
-    bool inserted = my_hash_set.Emplace(duckdb::string_t(name.c_str(), name.size()), result);
+    inserted = my_hash_set.Emplace(duckdb::string_t(name.c_str(), name.size()), result);
     if (inserted)
     {
         std::cout << "inserted ? : " << inserted << "\n";
