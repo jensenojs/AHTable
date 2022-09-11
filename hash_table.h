@@ -5,7 +5,6 @@
 #include <exception>
 #include "allocator.h"
 #include "common.h"
-#include "fast_memcpy.h"
 #include "hash.h"
 
 #include <iostream>
@@ -119,7 +118,7 @@ public:
                 {
                     hash_t hash = Hash(buf[i].GetRawKey());
                     size_t new_index = assisitant.Slot(hash);
-                    FastMemcpy(static_cast<void *>(&new_buf[new_index]), static_cast<const void *>(&buf[i]), sizeof(Cell));
+                    memcpy(static_cast<void *>(&new_buf[new_index]), static_cast<const void *>(&buf[i]), sizeof(Cell));
                 }
             }
             Allocator::Free(buf);
@@ -161,7 +160,7 @@ public:
                 continue;
             }
 
-            FastMemcpy(static_cast<void *>(&buf[index]), static_cast<const void *>(&buf[next_index]), sizeof(Cell));
+            memcpy(static_cast<void *>(&buf[index]), static_cast<const void *>(&buf[next_index]), sizeof(Cell));
             index = next_index;
         }
         buf[index].SetUnoccupied();

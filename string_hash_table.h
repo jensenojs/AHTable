@@ -1,6 +1,5 @@
 #pragma once
 #include <type_traits>
-#include "fast_memcpy.h"
 #include "hash_table.h"
 #include "string_heap.h"
 #include "string_type.h"
@@ -120,8 +119,8 @@ struct StringHashTableCell : public HashTableCell<T>
     }
 
     const T & GetRawKey() const { return Base::GetRawKey(); }
-    bool IsOccupied() const { return key.size() != 0; }
-    void SetUnoccupied() { key.size() = 0; }
+    bool IsOccupied() const { return Base::key.size() != 0; }
+    void SetUnoccupied() { Base::key.size() = 0; }
 };
 
 template <>
@@ -175,12 +174,17 @@ struct StringHashTableCell<duckdb::string_t> : public HashTableCell<duckdb::stri
 
     using Base::GetRawKey;
 
+    // TODO:
+    // hash_t hash;
+
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
     const duckdb::string_t & GetKey() const { return Base::GetKey(); }
     bool IsOccupied() const { return key.GetSize() != 0; }
     void SetUnoccupied() { key = duckdb::string_t(); }
+    // TODO:
+    // hash_t GetHash() const { return hash; }
 };
 
 using StringKey8HashTable = HashTable<StringHashTableCell<StringKey8>, DefaultAllocator, HTAssistant<>>;
@@ -281,12 +285,12 @@ public:
             case 0: {
                 if (((uintptr_t)key_ptr & 0x800) == 0)
                 {
-                    FastMemcpy(&sum_type_key.n3[0], key_ptr, 8);
+                    memcpy(&sum_type_key.n3[0], key_ptr, 8);
                     sum_type_key.n3[0] &= (size_t)0xFFFFFFFFFFFFFFFF >> tail;
                 }
                 else
                 {
-                    FastMemcpy(&sum_type_key.n3[0], key_ptr + key_size - 8, 8);
+                    memcpy(&sum_type_key.n3[0], key_ptr + key_size - 8, 8);
                     sum_type_key.n3[0] >>= tail;
                 }
                 StringKey8HashTable::result_type res;
@@ -294,12 +298,13 @@ public:
                 result.key = res->GetKey();
                 if constexpr (!std::is_same<mapped_type, void>::value)
                 {
+                    // TODO: set result value
                 }
                 break;
             }
             case 1: {
-                FastMemcpy(&sum_type_key.n3[0], key_ptr, 8);
-                FastMemcpy(&sum_type_key.n3[1], key_ptr + key_size - 8, 8);
+                memcpy(&sum_type_key.n3[0], key_ptr, 8);
+                memcpy(&sum_type_key.n3[1], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[1] >>= tail;
                 StringKey16HashTable::result_type res;
                 t2.Emplace(sum_type_key.k16, res);
@@ -310,8 +315,8 @@ public:
                 break;
             }
             case 2: {
-                FastMemcpy(&sum_type_key.n3[0], key_ptr, 16);
-                FastMemcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
+                memcpy(&sum_type_key.n3[0], key_ptr, 16);
+                memcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[2] >>= tail;
                 StringKey24HashTable::result_type res;
                 t3.Emplace(sum_type_key.k24, res);
@@ -347,12 +352,12 @@ public:
             case 0: {
                 if (((uintptr_t)key_ptr & 0x800) == 0)
                 {
-                    FastMemcpy(&sum_type_key.n3[0], key_ptr, 8);
+                    memcpy(&sum_type_key.n3[0], key_ptr, 8);
                     sum_type_key.n3[0] &= (size_t)0xFFFFFFFFFFFFFFFF >> tail;
                 }
                 else
                 {
-                    FastMemcpy(&sum_type_key.n3[0], key_ptr + key_size - 8, 8);
+                    memcpy(&sum_type_key.n3[0], key_ptr + key_size - 8, 8);
                     sum_type_key.n3[0] >>= tail;
                 }
                 auto res = t1.Lookup(sum_type_key.k8);
@@ -370,8 +375,8 @@ public:
                 }
             }
             case 1: {
-                FastMemcpy(&sum_type_key.n3[0], key_ptr, 8);
-                FastMemcpy(&sum_type_key.n3[1], key_ptr + key_size - 8, 8);
+                memcpy(&sum_type_key.n3[0], key_ptr, 8);
+                memcpy(&sum_type_key.n3[1], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[1] >>= tail;
                 auto res = t2.Lookup(sum_type_key.k16);
                 if (!res)
@@ -388,8 +393,8 @@ public:
                 }
             }
             case 2: {
-                FastMemcpy(&sum_type_key.n3[0], key_ptr, 16);
-                FastMemcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
+                memcpy(&sum_type_key.n3[0], key_ptr, 16);
+                memcpy(&sum_type_key.n3[2], key_ptr + key_size - 8, 8);
                 sum_type_key.n3[2] >>= tail;
                 auto res = t3.Lookup(sum_type_key.k24);
                 if (!res)
