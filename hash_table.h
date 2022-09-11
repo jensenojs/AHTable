@@ -54,7 +54,7 @@ template <typename Key>
 struct HashTableCell
 {
     using key_type = Key;
-    using mapped_type = None;
+    using mapped_type = void;
 
     Key key;
 
@@ -63,7 +63,7 @@ struct HashTableCell
     HashTableCell(Key && key) : key(std::move(key)) { }
 
     const Key & GetKey() const { return key; }
-    void GetValue() const { return; }
+    mapped_type GetValue() const { return; }
 
     bool IsOccupied() const { return key != Key{}; }
     void SetUnoccupied() { key = Key{}; }

@@ -1,4 +1,5 @@
 #pragma once
+#include <type_traits>
 #include "fast_memcpy.h"
 #include "hash_table.h"
 #include "string_type.h"
@@ -17,11 +18,6 @@ struct StringKey24
     uint64_t b;
     uint64_t c;
 };
-
-using StringKey8HashTable = HashTable<HashTableCell<StringKey8>, DefaultAllocator, HTAssistant<>>;
-using StringKey16HashTable = HashTable<HashTableCell<StringKey16>, DefaultAllocator, HTAssistant<>>;
-using StringKey24HashTable = HashTable<HashTableCell<StringKey24>, DefaultAllocator, HTAssistant<>>;
-using StringRefHashTable = HashTable<HashTableCell<duckdb::string_t>, DefaultAllocator, HTAssistant<>>;
 
 /*
 template <typename Cell>
@@ -55,38 +51,75 @@ struct StringHashTableCell : public HashTableCell<T>
     using Base = HashTableCell<T>;
     using Base::Base;
 
-    // TODO:
-    const duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    // using key_type = duckdb::string_t;
+    // using mapped_type = typename Base::mapped_type;
 
-    bool IsOccupied() const { return key.b != 0; }
-    void SetUnoccupied() { key.b == 0; }
+    // TODO:
+    duckdb::string_t GetKey() const { return duckdb::string_t(); }
 };
 
 template <>
 struct StringHashTableCell<StringKey16> : public HashTableCell<StringKey16>
 {
+    using Base = HashTableCell<StringKey16>;
+    using Base::Base;
+
+    // using key_type = duckdb::string_t;
+    // using mapped_type = typename Base::mapped_type;
+
+    // TODO:
+    duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    bool IsOccupied() const { return key.b != 0; }
+    void SetUnoccupied() { key.b == 0; }
 };
 
 template <>
-struct StringHashTableCell<StringKey24>
+struct StringHashTableCell<StringKey24> : public HashTableCell<StringKey24>
 {
+    using Base = HashTableCell<StringKey24>;
+    using Base::Base;
+
+    // using key_type = duckdb::string_t;
+    // using mapped_type = typename Base::mapped_type;
+
+    // TODO:
+    duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    bool IsOccupied() const { return key.c != 0; }
+    void SetUnoccupied() { key.c == 0; }
 };
 
 template <>
-struct StringHashTableCell<duckdb::string_t>
+struct StringHashTableCell<duckdb::string_t> : public HashTableCell<duckdb::string_t>
 {
+    using Base = HashTableCell<duckdb::string_t>;
+    using Base::Base;
+
+    // using key_type = duckdb::string_t;
+    // using mapped_type = typename Base::mapped_type;
+
+    // TODO:
+    duckdb::string_t & GetKey() const { return key; }
+    bool IsOccupied() const { return key.GetSize() != 0; }
+    void SetUnoccupied() { key = duckdb::string_t(); }
 };
+
+using StringKey8HashTable = HashTable<StringHashTableCell<StringKey8>, DefaultAllocator, HTAssistant<>>;
+using StringKey16HashTable = HashTable<StringHashTableCell<StringKey16>, DefaultAllocator, HTAssistant<>>;
+using StringKey24HashTable = HashTable<StringHashTableCell<StringKey24>, DefaultAllocator, HTAssistant<>>;
+using StringRefHashTable = HashTable<StringHashTableCell<duckdb::string_t>, DefaultAllocator, HTAssistant<>>;
 
 template <typename MappedType>
 struct StringHashTableResult
 {
+    duckdb::string_t key;
     MappedType * value = nullptr;
+    // Cell * cell = nullptr;
 
     StringHashTableResult() = default;
 
-    explicit StringHashTableResult(MappedType * value) : value(value) { }
+    explicit StringHashTableResult(duckdb::string_t key, MappedType * value) : key(key), value(value) { }
 
-    None GetKey() const { return None{}; }
+    const duckdb::string_t & GetKey() const { return key; }
     MappedType & GetValue() const { return *value; }
 
     explicit operator bool() const { return value != nullptr; }
@@ -95,10 +128,43 @@ struct StringHashTableResult
 
     StringHashTableResult * operator->() const { return *this; }
 
+    // Cell & operator*() const { return *this; }
+
+    // Cell * operator->() const { return this; }
+
     friend bool operator==(const StringHashTableResult & lhs, const std::nullptr_t &) { return !lhs.value; }
     friend bool operator==(const std::nullptr_t &, const StringHashTableResult & rhs) { return !rhs.value; }
     friend bool operator!=(const StringHashTableResult & lhs, const std::nullptr_t &) { return lhs.value; }
     friend bool operator!=(const std::nullptr_t &, const StringHashTableResult & rhs) { return rhs.value; }
+};
+
+template <>
+struct StringHashTableResult<void>
+{
+    duckdb::string_t key;
+    bool has_key = false;
+
+    StringHashTableResult() = default;
+
+    explicit StringHashTableResult(duckdb::string_t key) : key(key), has_key(true) { }
+
+    const duckdb::string_t & GetKey() const { return key; }
+    void GetValue() const { return; }
+
+    explicit operator bool() const { return has_key; }
+
+    StringHashTableResult & operator*() { return *this; }
+
+    StringHashTableResult * operator->() { return this; }
+
+    // Cell & operator*() const { return *this; }
+
+    // Cell * operator->() const { return this; }
+
+    friend bool operator==(const StringHashTableResult & lhs, const std::nullptr_t &) { return !lhs.has_key; }
+    friend bool operator==(const std::nullptr_t &, const StringHashTableResult & rhs) { return !rhs.has_key; }
+    friend bool operator!=(const StringHashTableResult & lhs, const std::nullptr_t &) { return lhs.has_key; }
+    friend bool operator!=(const std::nullptr_t &, const StringHashTableResult & rhs) { return rhs.has_key; }
 };
 
 //! SAHA: A String Adaptive Hash Table for Analytical Databases
@@ -118,7 +184,7 @@ public:
 
 public:
     using key_type = duckdb::string_t;
-    using mapped_type = typename StringRefHashTable::cell_type::mapped_type;
+    using mapped_type = typename StringRefHashTable::mapped_type;
     using result_type = StringHashTableResult<typename StringRefHashTable::cell_type::mapped_type>;
 
     bool __attribute__((__always_inline__)) Emplace(duckdb::string_t key, result_type & result)
@@ -143,7 +209,14 @@ public:
                 }
                 StringKey8HashTable::result_type res;
                 t1.Emplace(sum_type_key.k8, res);
-                result.value = &res->GetValue();
+                result.key = res->GetKey();
+                if constexpr (std::is_same<mapped_type, void>::value)
+                {
+                }
+                else
+                {
+                    // result.value = &res->GetValue();
+                }
                 break;
             }
             case 1: {
@@ -152,7 +225,14 @@ public:
                 sum_type_key.n3[1] >>= tail;
                 StringKey16HashTable::result_type res;
                 t2.Emplace(sum_type_key.k16, res);
-                result.value = &res->GetValue();
+                result.key = res->GetKey();
+                if constexpr (std::is_same<mapped_type, void>::value)
+                {
+                }
+                else
+                {
+                    // result.value = &res->GetValue();
+                }
                 break;
             }
             case 2: {
@@ -161,7 +241,14 @@ public:
                 sum_type_key.n3[2] >>= tail;
                 StringKey24HashTable::result_type res;
                 t3.Emplace(sum_type_key.k24, res);
-                result.value = &res->GetValue();
+                result.key = res->GetKey();
+                if constexpr (std::is_same<mapped_type, void>::value)
+                {
+                }
+                else
+                {
+                    // result.value = &res->GetValue();
+                }
                 break;
             }
             default:
@@ -196,7 +283,14 @@ public:
                 {
                     return result_type();
                 }
-                return result_type(&res->GetValue());
+                if constexpr (std::is_same<mapped_type, void>::value)
+                {
+                    return result_type(res->GetKey());
+                }
+                else
+                {
+                    // return result_type(res->GetKey(), &res->GetValue());
+                }
             }
             case 1: {
                 FastMemcpy(&sum_type_key.n3[0], key_ptr, 8);
@@ -207,7 +301,14 @@ public:
                 {
                     return result_type();
                 }
-                return result_type(&res->GetValue());
+                if constexpr (std::is_same<mapped_type, void>::value)
+                {
+                    return result_type(res->GetKey());
+                }
+                else
+                {
+                    // return result_type(res->GetKey(), &res->GetValue());
+                }
             }
             case 2: {
                 FastMemcpy(&sum_type_key.n3[0], key_ptr, 16);
@@ -219,7 +320,14 @@ public:
                 {
                     return result_type();
                 }
-                return result_type(&res->GetValue());
+                if constexpr (std::is_same<mapped_type, void>::value)
+                {
+                    return result_type(res->GetKey());
+                }
+                else
+                {
+                    // return result_type(res->GetKey(), &res->GetValue());
+                }
             }
             default: {
                 // TODO(lokax): Need to copy data
@@ -228,7 +336,14 @@ public:
                 {
                     return result_type();
                 }
-                return result_type(&res->GetValue());
+                if constexpr (std::is_same<mapped_type, void>::value)
+                {
+                    return result_type(res->GetKey());
+                }
+                else
+                {
+                    // return result_type(res->GetKey(), &res->GetValue());
+                }
             }
         }
     }
