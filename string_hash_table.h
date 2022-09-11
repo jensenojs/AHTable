@@ -25,6 +25,43 @@ struct StringKey24
     bool operator!=(const StringKey24 & rhs) const { return !this->operator==(rhs); }
 };
 
+
+inline duckdb::string_t ToString(const StringKey8 & x)
+{
+    for (size_t i = 8; i > 0; i--)
+    {
+        if ((x & (0x1 << (i - 1))) != 0)
+        {
+            return duckdb::string_t((const char *)(&x), i);
+        }
+    }
+    return duckdb::string_t();
+}
+
+inline duckdb::string_t ToString(const StringKey16 & x)
+{
+    for (size_t i = 8; i > 0; i--)
+    {
+        if ((x.b & (0x1 << (i - 1))) != 0)
+        {
+            return duckdb::string_t((const char *)(&x), i + 8);
+        }
+    }
+    return duckdb::string_t();
+}
+
+inline duckdb::string_t ToString(const StringKey24 & x)
+{
+    for (size_t i = 8; i > 0; i--)
+    {
+        if ((x.c & (0x1 << (i - 1))) != 0)
+        {
+            return duckdb::string_t((const char *)(&x), i + 16);
+        }
+    }
+    return duckdb::string_t();
+}
+
 template <>
 hash_t Hash(StringKey16 x)
 {
@@ -75,12 +112,23 @@ struct StringHashTableCell : public HashTableCell<T>
     using Base = HashTableCell<T>;
     using Base::Base;
 
+    duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    const T & GetRawKey() const { return Base::GetRawKey(); }
+};
+
+template <>
+struct StringHashTableCell<StringKey8> : public HashTableCell<StringKey8>
+{
+    using Base = HashTableCell<StringKey8>;
+    using Base::Base;
+
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
-    // TODO:
-    duckdb::string_t GetKey() const { return duckdb::string_t(); }
-    const T & GetRawKey() const { return Base::GetRawKey(); }
+    duckdb::string_t GetKey() const { return ToString(GetRawKey()); }
+    const StringKey8 & GetRawKey() const { return Base::GetRawKey(); }
+    bool IsOccupied() const { return key != 0; }
+    void SetUnoccupied() { key == 0; }
 };
 
 template <>
@@ -92,8 +140,7 @@ struct StringHashTableCell<StringKey16> : public HashTableCell<StringKey16>
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
-    // TODO:
-    duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    duckdb::string_t GetKey() const { return ToString(GetRawKey()); }
     const StringKey16 & GetRawKey() const { return Base::GetRawKey(); }
     bool IsOccupied() const { return key.b != 0; }
     void SetUnoccupied() { key.b == 0; }
@@ -108,8 +155,7 @@ struct StringHashTableCell<StringKey24> : public HashTableCell<StringKey24>
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
-    // TODO:
-    duckdb::string_t GetKey() const { return duckdb::string_t(); }
+    duckdb::string_t GetKey() const { return ToString(GetRawKey()); }
     const StringKey24 GetRawKey() const { return Base::GetRawKey(); }
     bool IsOccupied() const { return key.c != 0; }
     void SetUnoccupied() { key.c == 0; }
@@ -126,7 +172,6 @@ struct StringHashTableCell<duckdb::string_t> : public HashTableCell<duckdb::stri
     // using key_type = duckdb::string_t;
     // using mapped_type = typename Base::mapped_type;
 
-    // TODO:
     const duckdb::string_t & GetKey() const { return Base::GetKey(); }
     bool IsOccupied() const { return key.GetSize() != 0; }
     void SetUnoccupied() { key = duckdb::string_t(); }
@@ -239,12 +284,8 @@ public:
                 StringKey8HashTable::result_type res;
                 t1.Emplace(sum_type_key.k8, res);
                 result.key = res->GetKey();
-                if constexpr (std::is_same<mapped_type, void>::value)
+                if constexpr (!std::is_same<mapped_type, void>::value)
                 {
-                }
-                else
-                {
-                    // result.value = &res->GetValue();
                 }
                 break;
             }
@@ -255,12 +296,8 @@ public:
                 StringKey16HashTable::result_type res;
                 t2.Emplace(sum_type_key.k16, res);
                 result.key = res->GetKey();
-                if constexpr (std::is_same<mapped_type, void>::value)
+                if constexpr (!std::is_same<mapped_type, void>::value)
                 {
-                }
-                else
-                {
-                    // result.value = &res->GetValue();
                 }
                 break;
             }
@@ -271,12 +308,8 @@ public:
                 StringKey24HashTable::result_type res;
                 t3.Emplace(sum_type_key.k24, res);
                 result.key = res->GetKey();
-                if constexpr (std::is_same<mapped_type, void>::value)
+                if constexpr (!std::is_same<mapped_type, void>::value)
                 {
-                }
-                else
-                {
-                    // result.value = &res->GetValue();
                 }
                 break;
             }
